@@ -399,8 +399,7 @@ void CReflector::MaintenanceThread()
 				{
 					nngCounter = 0;
 					// Removed spammy log: std::cout << "NNG debug: Periodic state broadcast..." << std::endl;
-					nlohmann::json state;
-					state["type"] = "state";
+					auto state = CNNGPublisher::NewEvent("state");
 					JsonReport(state);
 					g_NNGPublisher.Publish(state);
 				}

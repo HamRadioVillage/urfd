@@ -62,8 +62,7 @@ void CClients::AddClient(std::shared_ptr<CClient> client)
 	std::cout << std::endl;
 
     // dashboard event
-    nlohmann::json event;
-    event["type"] = "client_connect";
+    auto event = CNNGPublisher::NewEvent("client_connect");
     event["callsign"] = client->GetCallsign().GetCS();
     event["ip"] = client->GetIp().GetAddress();
     event["protocol"] = client->GetProtocolName();
@@ -91,8 +90,7 @@ void CClients::RemoveClient(std::shared_ptr<CClient> client)
 				std::cout << std::endl;
 
                 // dashboard event
-                nlohmann::json event;
-                event["type"] = "client_disconnect";
+                auto event = CNNGPublisher::NewEvent("client_disconnect");
                 event["callsign"] = (*it)->GetCallsign().GetCS();
                 event["ip"] = (*it)->GetIp().GetAddress();
                 event["protocol"] = (*it)->GetProtocolName();

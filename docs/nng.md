@@ -40,7 +40,15 @@ graph TD
 
 ## Messaging Protocols
 
-Events are sent as serialized JSON strings. Each message contains a `type` field to identify the payload structure.
+Events are sent as serialized JSON strings. Every message carries the same three envelope fields, whatever its type:
+
+| Field | Meaning |
+|---|---|
+| `type` | Identifies the payload structure. |
+| `reflector` | Callsign of the reflector that emitted the event. Lets one subscriber watch several reflectors without inferring identity from which socket delivered the message. |
+| `timestamp` | UTC time the event was **observed**, `%FT%TZ`. Stamped where the event occurs, not where it is sent, so it stays correct if the event is queued before reaching the socket. |
+
+Note that `callsign`, where a payload carries one, always refers to the station the event is *about* — never to the reflector.
 
 ### 1. State Broadcast (`state`)
 
@@ -51,6 +59,8 @@ Sent periodically based on `DashboardInterval` (default 10s). It provides a full
 ```json
 {
   "type": "state",
+  "reflector": "URF123",
+  "timestamp": "2026-09-22T14:03:11Z",
   "Configure": {
     "Key": "Value",
     ...
@@ -98,6 +108,8 @@ Triggered immediately when a client (Repeater, Hotspot, or Mobile App) links or 
 ```json
 {
   "type": "client_connect",
+  "reflector": "URF123",
+  "timestamp": "2026-09-22T14:03:11Z",
   "callsign": "N7TAE",
   "ip": "1.2.3.4",
   "protocol": "DMR",
@@ -114,6 +126,8 @@ Triggered when the reflector "hears" an active transmission. This event is sent 
 ```json
 {
   "type": "hearing",
+  "reflector": "URF123",
+  "timestamp": "2026-09-22T14:03:11Z",
   "callsign": "G4XYZ",
   "repeater": "GB3NB",
   "rpt2": "XLX123 A",
@@ -132,6 +146,8 @@ Triggered when a transmission stream is closed (user stops talking).
 ```json
 {
   "type": "closing",
+  "reflector": "URF123",
+  "timestamp": "2026-09-22T14:03:11Z",
   "callsign": "G4XYZ",
   "module": "A",
   "protocol": "M17"

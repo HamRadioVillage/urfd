@@ -66,8 +66,7 @@ void CUsers::Hearing(const CCallsign &my, const CCallsign &rpt1, const CCallsign
 	AddUser(heard);
 
     // dashboard event
-    nlohmann::json event;
-    event["type"] = "hearing";
+    auto event = CNNGPublisher::NewEvent("hearing");
     event["callsign"] = my.GetCS();
     event["repeater"] = rpt1.GetCS();
     event["rpt2"] = rpt2.GetCS();
@@ -80,8 +79,7 @@ void CUsers::Hearing(const CCallsign &my, const CCallsign &rpt1, const CCallsign
 void CUsers::Closing(const CCallsign &my, char module, EProtocol protocol, const std::string& recording)
 {
 	// dashboard event
-	nlohmann::json event;
-	event["type"] = "closing";
+	auto event = CNNGPublisher::NewEvent("closing");
 	event["callsign"] = my.GetCS();
 	event["module"] = std::string(1, module);
 	event["protocol"] = g_GateKeeper.ProtocolName(protocol);

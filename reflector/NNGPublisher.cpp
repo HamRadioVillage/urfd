@@ -1,5 +1,6 @@
 #include "NNGPublisher.h"
 #include "Global.h"
+#include <ctime>
 #include <iostream>
 #include <sstream>
 
@@ -44,6 +45,28 @@ void CNNGPublisher::Stop()
     nng_close(m_sock);
     m_started = false;
     std::cout << "NNG: Publisher stopped" << std::endl;
+}
+
+nlohmann::json CNNGPublisher::NewEvent(const char *type)
+{
+    nlohmann::json event;
+    event["type"] = type;
+    event["reflector"] = g_Reflector.GetCallsign().GetCS();
+
+    // %FT%TZ, matching the ConnectTime and LastHeard fields already emitted
+    // in the state payload, so a subscriber needs only one date format.
+    //
+    // gmtime_r, not gmtime: events are raised on protocol threads, several of
+    // which can be in here at once, and gmtime returns a pointer into a single
+    // shared struct. The other gmtime calls in this tree are all on the
+    // maintenance thread, so they are safe as they stand.
+    const std::time_t now = std::time(nullptr);
+    struct tm utc;
+    char s[32];
+    if (std::strftime(s, sizeof(s), "%FT%TZ", gmtime_r(&now, &utc)))
+        event["timestamp"] = s;
+
+    return event;
 }
 
 void CNNGPublisher::Publish(const nlohmann::json &event)
