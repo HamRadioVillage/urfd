@@ -114,10 +114,10 @@ Triggered when the reflector "hears" an active transmission. This event is sent 
 ```json
 {
   "type": "hearing",
-  "my": "G4XYZ",
-  "ur": "CQCQCQ",
-  "rpt1": "GB3NB",
+  "callsign": "G4XYZ",
+  "repeater": "GB3NB",
   "rpt2": "XLX123 A",
+  "via_peer": "XLX123",
   "module": "A",
   "protocol": "M17"
 }
@@ -132,7 +132,7 @@ Triggered when a transmission stream is closed (user stops talking).
 ```json
 {
   "type": "closing",
-  "my": "G4XYZ",
+  "callsign": "G4XYZ",
   "module": "A",
   "protocol": "M17"
 }
