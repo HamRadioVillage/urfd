@@ -180,7 +180,7 @@ void CDmrplusProtocol::Task(void)
 void CDmrplusProtocol::OnDvHeaderPacketIn(std::unique_ptr<CDvHeaderPacket> &Header, const CIp &Ip)
 {
 	// find the stream
-	auto stream = GetStream(Header->GetStreamId());
+	auto stream = GetStream(Header->GetStreamId(), &Ip);
 	if ( stream )
 	{
 		// stream already open

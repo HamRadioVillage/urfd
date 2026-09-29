@@ -339,7 +339,7 @@ void CBMProtocol::OnDvHeaderPacketIn(std::unique_ptr<CDvHeaderPacket> &Header, c
 	// todo: do the same for DVFrame and DVLAstFrame packets
 
 	// find the stream
-	auto stream = GetStream(Header->GetStreamId());
+	auto stream = GetStream(Header->GetStreamId(), &Ip);
 	if ( stream )
 	{
 		// stream already open

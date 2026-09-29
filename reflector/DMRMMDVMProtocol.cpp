@@ -276,7 +276,7 @@ void CDmrmmdvmProtocol::OnDvHeaderPacketIn(std::unique_ptr<CDvHeaderPacket> &Hea
 	bool lastheard = false;
 
 	// find the stream
-	auto stream = GetStream(Header->GetStreamId());
+	auto stream = GetStream(Header->GetStreamId(), &Ip);
 	if ( stream )
 	{
 		// stream already open

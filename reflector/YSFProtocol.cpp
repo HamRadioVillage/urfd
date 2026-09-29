@@ -255,7 +255,7 @@ void CYsfProtocol::Task(void)
 void CYsfProtocol::OnDvHeaderPacketIn(std::unique_ptr<CDvHeaderPacket> &Header, const CIp &Ip, uint8_t)
 {
 	// find the stream
-	auto stream = GetStream(Header->GetStreamId());
+	auto stream = GetStream(Header->GetStreamId(), &Ip);
 	if ( stream )
 	{
 		// stream already open

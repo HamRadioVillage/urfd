@@ -382,7 +382,7 @@ void CURFProtocol::OnDvHeaderPacketIn(std::unique_ptr<CDvHeaderPacket> &Header, 
 	Header->SetRemotePeerOrigin();
 
 	// find the stream
-	auto stream = GetStream(Header->GetStreamId());
+	auto stream = GetStream(Header->GetStreamId(), &Ip);
 	if ( stream )
 	{
 		// stream already open
