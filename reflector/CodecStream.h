@@ -88,6 +88,8 @@ protected:
 	double       m_RTSum;
 	unsigned int m_RTCount;
 	uint32_t     m_uiTotalPackets;
+	unsigned int m_uiLostPackets;   // frames whose reply never came back
+	unsigned int m_uiStaleReplies;  // replies that came back for no outstanding frame
 
 	// Recording
 	CAudioRecorder m_Recorder;

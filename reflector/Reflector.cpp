@@ -470,6 +470,8 @@ void CReflector::MaintenanceThread()
                    if (!tcStats.empty()) std::cout << "TCD [" << tcStats << "]";
                    std::cout << std::endl;
                }
+               if (tcport && !g_TCServer.IsConnected())
+                   std::cout << "TC link is DOWN, no transcoder connected for " << g_TCServer.SecondsDisconnected() << "s" << std::endl;
             }
 
 			if (tcport && g_TCServer.AnyAreClosed())
