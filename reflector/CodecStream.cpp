@@ -83,6 +83,8 @@ void CCodecStream::ResetStats(uint16_t streamid, ECodecType type)
 	m_RTSum = 0;
 	m_RTCount = 0;
 	m_uiTotalPackets = 0;
+	m_uiLostPackets = 0;
+	m_uiStaleReplies = 0;
 	
 	// Start recording if enabled
 	if (g_Configure.GetBoolean(g_Keys.audio.enable))
@@ -116,6 +118,8 @@ void CCodecStream::ReportStats()
 		std::cout << std::fixed << "TC round-trip time(ms): " << min << '/' << ave << '/' << max << ", " << m_RTCount << " total packets" << std::endl;
 		std::cout.precision(prec);
 	}
+	if (m_uiLostPackets || m_uiStaleReplies)
+		std::cout << "TC module '" << m_CSModule << "': " << m_uiLostPackets << " frames got no reply, " << m_uiStaleReplies << " late replies discarded" << std::endl;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////
@@ -155,70 +159,72 @@ void CCodecStream::RxThread()
 		
 		if (g_TCServer.Receive(m_CSModule, &pack, 1000)) // 1s timeout to check keep_running occasionally
 		{
-			if ( m_LocalQueue.IsEmpty() )
+			if (! m_IsOpen)
 			{
-				std::cout << "Unexpected transcoded packet received from transcoder: Module='" << pack.module << "' StreamID=" << std::hex << std::showbase << ntohs(pack.streamid) << std::endl;
+				// This packet will be ignored
+				std::cout << "Transcoder packet received but CodecStream[" << m_CSModule << "] is closed: Module='" << pack.module << "' StreamID=" << std::hex << std::showbase << ntohs(pack.streamid) << std::dec << std::noshowbase << std::endl;
+				continue;
 			}
-			else if (m_IsOpen)
+
+			// Replies come back in the order their frames went out, but not every frame gets one:
+			// the transcoder can drop a frame, and frames in flight are lost with the link. So
+			// rather than assume the oldest outstanding frame is this reply's, first discard the
+			// frames that can no longer be answered, then take the frame this reply is for.
+			auto unanswerable = [this, &pack](const std::unique_ptr<CDvFramePacket> &frame) {
+				const auto tc = frame->GetCodecPacket();
+				if (tc->streamid != pack.streamid)
+					return pack.streamid == m_uiStreamId; // the frame is left over from an earlier stream
+				return tc->sequence < pack.sequence;     // the frame's reply was lost
+			};
+			while (m_LocalQueue.PopIf(unanswerable))
+				m_uiLostPackets++;
+
+			auto Packet = m_LocalQueue.PopIf([&pack](const std::unique_ptr<CDvFramePacket> &frame) {
+				const auto tc = frame->GetCodecPacket();
+				return tc->streamid == pack.streamid && tc->sequence == pack.sequence;
+			});
+			if (! Packet)
 			{
-				// pop the original packet
-				auto Packet = m_LocalQueue.Pop();
+				// A late reply for a frame already given up on, or for an earlier stream
+				m_uiStaleReplies++;
+				continue;
+			}
 
-				// make sure this is the correct packet
-				if ((pack.streamid == Packet->GetCodecPacket()->streamid) && (pack.sequence == Packet->GetCodecPacket()->sequence))
-				{
-
-					// update statistics
-					auto rt =Packet->m_rtTimer.time();	// the round-trip time
-					if (0 == m_RTCount)
-					{
-						m_RTMin = rt;
-						m_RTMax = rt;
-					}
-					else
-					{
-						if (rt < m_RTMin)
-							m_RTMin = rt;
-						else if (rt > m_RTMax)
-							m_RTMax = rt;
-					}
-					m_RTSum += rt;
-					m_RTCount++;
-
-					// update content with transcoded data
-					Packet->SetCodecData(&pack);
-					
-					// Write audio to recorder if active
-					if (m_Recorder.IsRecording())
-					{
-					    m_Recorder.Write(pack.usrp, 160);
-					}
-
-					// mark the DStar sync frames if the source isn't dstar
-					if (ECodecType::dstar!=Packet->GetCodecIn() && 0==Packet->GetPacketId()%21)
-					{
-						const uint8_t DStarSync[] = { 0x55, 0x2D, 0x16 };
-						Packet->SetDvData(DStarSync);
-					}
-
-					// and push it back to client
-					m_PacketStream->ReturnPacket(std::move(Packet));
-				}
-				else
-				{
-					// Not the correct packet! It will be ignored
-					// Report it
-					if (pack.streamid != Packet->GetCodecPacket()->streamid)
-						std::cerr << std::hex  << std::showbase << "StreamID mismatch: this voice frame=" << ntohs(Packet->GetCodecPacket()->streamid) << " returned transcoder packet=" << ntohs(pack.streamid) << std::dec << std::noshowbase << std::endl;
-					if (pack.sequence != Packet->GetCodecPacket()->sequence)
-						std::cerr << "Sequence mismatch: this voice frame=" << Packet->GetCodecPacket()->sequence << " returned transcoder packet=" << pack.sequence << std::endl;
-				}
+			// update statistics
+			auto rt =Packet->m_rtTimer.time();	// the round-trip time
+			if (0 == m_RTCount)
+			{
+				m_RTMin = rt;
+				m_RTMax = rt;
 			}
 			else
 			{
-				// Likewise, this packet will be ignored
-				std::cout << "Transcoder packet received but CodecStream[" << m_CSModule << "] is closed: Module='" << pack.module << "' StreamID=" << std::hex << std::showbase << ntohs(pack.streamid) << std::endl;
+				if (rt < m_RTMin)
+					m_RTMin = rt;
+				else if (rt > m_RTMax)
+					m_RTMax = rt;
 			}
+			m_RTSum += rt;
+			m_RTCount++;
+
+			// update content with transcoded data
+			Packet->SetCodecData(&pack);
+			
+			// Write audio to recorder if active
+			if (m_Recorder.IsRecording())
+			{
+			    m_Recorder.Write(pack.usrp, 160);
+			}
+
+			// mark the DStar sync frames if the source isn't dstar
+			if (ECodecType::dstar!=Packet->GetCodecIn() && 0==Packet->GetPacketId()%21)
+			{
+				const uint8_t DStarSync[] = { 0x55, 0x2D, 0x16 };
+				Packet->SetDvData(DStarSync);
+			}
+
+			// and push it back to client
+			m_PacketStream->ReturnPacket(std::move(Packet));
 		}
 		else
 		{
@@ -277,9 +283,7 @@ void CCodecStream::TxThread(void)
 			if (g_TCServer.Send(&pToSend))
 			{
 				// Send failed. 
-				// We should ideally remove it from m_LocalQueue, but CSafePacketQueue has no RemoveLast.
-				// It will just rot there until cleared on ResetStats or mismatch handling.
-				// This is rare.
+				// It stays in m_LocalQueue until RxThread gets a later reply and discards it as lost.
 			}
 		}
 	}

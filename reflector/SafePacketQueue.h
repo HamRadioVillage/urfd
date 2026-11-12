@@ -69,6 +69,18 @@ public:
 		}
 	}
 
+	// Pop the front element if pred accepts it, otherwise leave the queue alone and return nullptr
+	template <class Pred>
+	T PopIf(Pred pred)
+	{
+		std::lock_guard<std::mutex> lock(m);
+		if (q.empty() || ! pred(q.front()))
+			return nullptr;
+		T val = std::move(q.front());
+		q.pop();
+		return val;
+	}
+
 	// If the queue is empty, wait until an element is available.
 	T PopWait(void)
 	{

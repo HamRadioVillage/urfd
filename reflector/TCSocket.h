@@ -58,7 +58,9 @@ public:
 	bool Send(const STCPacket *packet);
 
 	bool IsConnected(char module) const;
+	bool IsConnected() const { return m_Connected; }
     int GetFD(char module) const; // Legacy compat: returns 1 if connected, -1 if not
+	unsigned SecondsDisconnected() const; // 0 while a peer is connected
     
     std::string GetAndClearStats();
 
@@ -66,8 +68,16 @@ protected:
     nng_socket m_Sock;
     std::thread m_Thread;
     std::atomic<bool> m_Running;
-    std::atomic<bool> m_Connected;
+    std::atomic<bool> m_Connected; // true while there is a peer on the other end
 	std::string m_Modules;
+
+	// pair1 takes one peer at a time, and NNG tells us when it comes and goes
+	mutable std::mutex m_PipeMutex;
+	nng_pipe m_Pipe;
+	std::string m_PeerAddr;
+	std::atomic<int64_t> m_LastRxMs;    // when anything last arrived from the peer
+	std::atomic<int64_t> m_DownSinceMs; // when the peer last went away
+	std::atomic<bool> m_PeerPings;      // the peer sends keepalives, so its silence means it is gone
 
     // Per-module input queues
     std::map<char, std::shared_ptr<CTCPacketQueue>> m_Queues;
@@ -83,6 +93,10 @@ protected:
     std::mutex m_StatsMutex;
 
     void Dispatcher();
+	bool OpenSocket();
+	void SendPing();
+	void CheckLiveness(int64_t now);
+	static void PipeEvent(nng_pipe pipe, nng_pipe_ev ev, void *arg);
 };
 
 class CTCServer : public CTCSocket
@@ -103,5 +117,5 @@ public:
 	~CTCClient() {}
 	bool Open(const std::string &address, const std::string &modules, uint16_t port);
 	void Receive(std::queue<std::unique_ptr<STCPacket>> &queue, int ms);
-	void ReConnect(); // No-op in NNG
+	void ReConnect(); // NNG redials on its own; this only paces callers that retry while it does
 };
