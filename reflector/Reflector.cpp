@@ -54,6 +54,8 @@ CReflector::~CReflector()
 
 bool CReflector::Start(void)
 {
+	m_StartTime = std::time(nullptr);
+
 	// get config stuff
 	const auto cs(g_Configure.GetString(g_Keys.names.callsign));
 	m_Callsign.SetCallsign(cs, false);
@@ -372,7 +374,12 @@ void CReflector::MaintenanceThread()
 	if (g_Configure.Contains(g_Keys.files.json))
 		jsonpath.assign(g_Configure.GetString(g_Keys.files.json));
 	auto tcport = g_Configure.GetUnsigned(g_Keys.tc.port);
-	if (xmlpath.empty() && jsonpath.empty() && !g_Configure.GetBoolean(g_Keys.dashboard.enable))
+
+	// Registration runs on this thread's clock, so it has to count as something
+	// to do -- otherwise enabling only registration would silently do nothing.
+	const bool registering = g_Registration.Init();
+
+	if (xmlpath.empty() && jsonpath.empty() && !g_Configure.GetBoolean(g_Keys.dashboard.enable) && !registering)
 	{
 		return;	// nothing to do
 	}
@@ -419,6 +426,10 @@ void CReflector::MaintenanceThread()
 		// and wait a bit and do something useful at the same time
 		for (int i=0; i< XML_UPDATE_PERIOD*10 && keep_running; i++)
 		{
+			// Tell the reflector list we are still here. Checks a deadline and
+			// returns, so calling it on every tick costs nothing.
+			g_Registration.Tick();
+
 			// NNG periodic state update
 			if (g_Configure.GetBoolean(g_Keys.dashboard.enable))
 			{

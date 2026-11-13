@@ -29,6 +29,8 @@ public:
 	~CCurlGet();
 	// the contents of the URL will be appended to the stringstream.
 	CURLcode GetURL(const std::string &url, std::stringstream &ss, long timeout = 30);
+	// POSTs one url-encoded form field, and appends the reply to the stringstream.
+	CURLcode PostForm(const std::string &url, const std::string &field, const std::string &value, std::stringstream &ss, long timeout = 30);
 private:
 	static size_t data_write(void* buf, size_t size, size_t nmemb, void* userp);
 };

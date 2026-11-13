@@ -53,7 +53,9 @@ $PageOptions['UserPage']['ShowFilter']               = true;                    
 $Service['PIDFile']                                  = '/var/run/xlxd.pid';
 $Service['XMLFile']                                  = '/var/log/xlxd.xml';
 
-$CallingHome['Active']                               = false;					               // xlx phone home, true or false
+// Calling home is no longer used: urfd registers with the reflector list itself.
+// See [Registration] in urfd.ini and docs/registration.md. Leave this false.
+$CallingHome['Active']                               = false;
 $CallingHome['MyDashBoardURL']                       = 'http://your_dashboard';			       // dashboard url
 $CallingHome['ServerURL']                            = 'http://xlxapi.rlx.lu/api.php';         // database server, do not change !!!!
 $CallingHome['PushDelay']                            = 10;  	                               // push delay in seconds
