@@ -17,6 +17,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
+#include <netinet/in.h>
 #include <string.h>
 
 #include "Global.h"
