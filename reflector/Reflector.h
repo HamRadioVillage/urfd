@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <ctime>
 #include <unordered_map>
 
 #include "Users.h"
@@ -68,6 +69,9 @@ public:
 
 	// get
 	const CCallsign &GetCallsign(void) const        { return m_Callsign; }
+	// When Start() ran. The dashboard has been inferring this from the ctime of
+	// the pid file; the process itself simply knows.
+	std::time_t GetStartTime(void) const            { return m_StartTime; }
 	CUsers  *GetUsers(void)                         { m_Users.Lock(); return &m_Users; }
 	void    ReleaseUsers(void)                      { m_Users.Unlock(); }
 
@@ -102,6 +106,7 @@ protected:
 
 	// identity
 	CCallsign   m_Callsign;
+	std::time_t m_StartTime = 0;
 	std::string m_Modules, m_TCmodules;
 
 	// objects

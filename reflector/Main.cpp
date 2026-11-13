@@ -34,6 +34,7 @@ CLookupNxdn g_LNid;
 CLookupYsf  g_LYtr;
 CTCServer   g_TCServer;
 CNNGPublisher g_NNGPublisher;
+CRegistration g_Registration;
 
 ////////////////////////////////////////////////////////////////////////////////////////
 

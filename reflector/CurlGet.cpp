@@ -66,3 +66,47 @@ CURLcode CCurlGet::GetURL(const std::string &url, std::stringstream &ss, long ti
 	}
 	return code;
 }
+
+CURLcode CCurlGet::PostForm(const std::string &url, const std::string &field, const std::string &value, std::stringstream &ss, long timeout)
+{
+	CURLcode code(CURLE_FAILED_INIT);
+	CURL* curl = curl_easy_init();
+
+	if (curl)
+	{
+		// curl owns the escaped string, so it has to outlive the perform().
+		char *escaped = curl_easy_escape(curl, value.c_str(), (int)value.size());
+		if (escaped)
+		{
+			const std::string body(field + "=" + escaped);
+			if(CURLE_OK == (code = curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &data_write))
+			&& CURLE_OK == (code = curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 1L))
+			&& CURLE_OK == (code = curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L))
+			&& CURLE_OK == (code = curl_easy_setopt(curl, CURLOPT_FILE, &ss))
+			&& CURLE_OK == (code = curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout))
+			&& CURLE_OK == (code = curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body.c_str()))
+			&& CURLE_OK == (code = curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)body.size()))
+			&& CURLE_OK == (code = curl_easy_setopt(curl, CURLOPT_URL, url.c_str())))
+			{
+				// Content-Type defaults to application/x-www-form-urlencoded,
+				// which is what the receiving service expects.
+				code = curl_easy_perform(curl);
+				if (CURLE_OK == code)
+				{
+					// A reachable server that answers with an error is still a
+					// failed registration.
+					long status = 0;
+					curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+					if (status >= 400)
+					{
+						std::cout << "WARNING: " << url << " answered HTTP " << status << std::endl;
+						code = CURLE_HTTP_RETURNED_ERROR;
+					}
+				}
+			}
+			curl_free(escaped);
+		}
+		curl_easy_cleanup(curl);
+	}
+	return code;
+}
